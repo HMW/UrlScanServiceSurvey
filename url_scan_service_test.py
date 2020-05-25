@@ -33,6 +33,7 @@ def scanWithWebRisk(api_key_for_web_risk, url_to_scan):
     if url_threat is None:
         return None
     else:
+        print("debug: {}".format(url_threat.get("threatTypes")))
         return url_threat.get("threatTypes")
 
 
@@ -69,12 +70,12 @@ def scanWithSafeBrowsing(api_key_for_safe_browsing, url_to_scan):
         return None
 
     url_threat_list = resp.json().get("matches")
-    threat_types = ""
+    threat_types = []
 
     if url_threat_list is not None and len(url_threat_list) > 0:
         for threat in url_threat_list:
             if threat is not None:
-                threat_types += str(threat.get("threatTypes"))
+                threat_types.append(str(threat.get("threatType")))
 
     if threat_types:
         return threat_types
@@ -125,7 +126,10 @@ for url in url_list:
         safe_browsing_found_threat_count += 1
 
     # Cache url that has different scan result from web risk and safe browsing
-    if web_risk_result != safe_browsing_result:
+    if (web_risk_result is not None and safe_browsing_result is None) \
+            or (web_risk_result is None and safe_browsing_result is not None) \
+            or (web_risk_result is not None and safe_browsing_result is not None
+                and len(web_risk_result) != len(safe_browsing_result)):
         different_result_url_list.append(url)
 
     print("{} - {}".format(index, url))
