@@ -99,6 +99,9 @@ safe_browsing_found_threat_count = 0
 api_key = api_key_list.pop()
 different_result_url_list = []
 for url in url_list:
+    if not bool(url.strip()):
+        continue
+
     index = url_list.index(url)
 
     # get key
