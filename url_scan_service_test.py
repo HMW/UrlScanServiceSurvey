@@ -86,17 +86,18 @@ def scanWithSafeBrowsing(api_key_for_safe_browsing, url_to_scan):
 # main
 total_duration_start = time.monotonic()
 url_list = loadUrlList()
+web_risk_api_key = input("Enter Web Risk API key: ")
 key_count = int((len(url_list) / Constant.Request_Count_Limit_Per_Key)) + 1
-print("Require key count {}".format(key_count))
-api_key_list = []
+print("Require Safe Browsing API key count {}".format(key_count))
+safe_browsing_api_key_list = []
 for i in range(key_count):
-    api_key_list.append(input("Enter API key {}: ".format(i + 1)))
+    safe_browsing_api_key_list.append(input("Enter Safe Browsing API key {}: ".format(i + 1)))
 
 web_risk_total_duration = 0
 web_risk_found_threat_count = 0
 safe_browsing_total_duration = 0
 safe_browsing_found_threat_count = 0
-api_key = api_key_list.pop()
+api_key = safe_browsing_api_key_list.pop()
 different_result_url_list = []
 for url in url_list:
     if not bool(url.strip()):
@@ -104,15 +105,9 @@ for url in url_list:
 
     index = url_list.index(url)
 
-    # get key
-    if index != 0 and index % Constant.Request_Count_Limit_Per_Key == 0:
-        api_key = api_key_list.pop()
-
-    print("Use key {}".format(api_key))
-
     # scan with web risk
     before = time.monotonic()
-    web_risk_result = scanWithWebRisk(api_key, url)
+    web_risk_result = scanWithWebRisk(web_risk_api_key, url)
     after = time.monotonic()
     web_risk_total_duration = web_risk_total_duration + (after - before)
 
@@ -120,6 +115,10 @@ for url in url_list:
         web_risk_found_threat_count += 1
 
     # scan with safe browsing
+    if index != 0 and index % Constant.Request_Count_Limit_Per_Key == 0:
+        api_key = safe_browsing_api_key_list.pop()
+
+    print("Safe Browsing use key {}".format(api_key))
     before = time.monotonic()
     safe_browsing_result = scanWithSafeBrowsing(api_key, url)
     after = time.monotonic()
