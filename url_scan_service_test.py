@@ -4,7 +4,9 @@ import json
 
 
 class Constant:
-    Request_Count_Limit_Per_Key = 100
+    Default_Key = ""
+    Request_Interval = 0.2
+    Request_Count_Limit_Per_Key = 10000
 
 
 def loadUrlList():
@@ -18,12 +20,14 @@ def scanWithWebRisk(api_key_for_web_risk, url_to_scan):
     headers = {
         "key": api_key_for_web_risk,
         "uri": url_to_scan,
-        "threatTypes": "MALWARE"
+        "threatTypes": "MALWARE",
+        "threatTypes": "SOCIAL_ENGINEERING",
+        "threatTypes": "UNWANTED_SOFTWARE"
     }
     resp = requests.get('https://webrisk.googleapis.com/v1/uris:search', headers)
 
     if resp.status_code != 200:
-        print(resp.status_code)
+        print("{} - {}".format(resp.status_code, resp.reason))
         return None
 
     url_threat = resp.json().get("threat")
@@ -62,7 +66,7 @@ def scanWithSafeBrowsing(api_key_for_safe_browsing, url_to_scan):
     resp = requests.post('https://safebrowsing.googleapis.com/v4/threatMatches:find', params=params, json=body_json)
 
     if resp.status_code != 200:
-        print(resp.status_code)
+        print(resp.reason)
         return None
 
     url_threat_list = resp.json().get("matches")
@@ -80,14 +84,27 @@ def scanWithSafeBrowsing(api_key_for_safe_browsing, url_to_scan):
 
 
 # main
-api_key = input("Enter API key: ")
 url_list = loadUrlList()
+key_count = int((len(url_list) / Constant.Request_Count_Limit_Per_Key)) + 1
+print("Require key count {}".format(key_count))
+api_key_list = []
+for i in range(key_count):
+    api_key_list.append(input("Enter API key {}: ".format(i + 1)))
 
 web_risk_total_duration = 0
 web_risk_found_threat_count = 0
 safe_browsing_total_duration = 0
 safe_browsing_found_threat_count = 0
+api_key = api_key_list.pop()
 for url in url_list:
+    index = url_list.index(url)
+
+    # get key
+    if index != 0 and index % Constant.Request_Count_Limit_Per_Key == 0:
+        api_key = api_key_list.pop()
+
+    print("Use key {}".format(api_key))
+
     # scan with web risk
     before = time.monotonic()
     web_risk_result = scanWithWebRisk(api_key, url)
@@ -106,8 +123,10 @@ for url in url_list:
     if safe_browsing_result is not None:
         safe_browsing_found_threat_count += 1
 
-    print("{} - {}".format(url_list.index(url), url))
-    time.sleep(0.2)
+    # cache url that has different scan result from web risk and safe browsing
+
+    print("{} - {}".format(index, url))
+    time.sleep(Constant.Request_Interval)
 
 print("Web Risk API ")
 print("    - fount {} threats".format(web_risk_found_threat_count))
