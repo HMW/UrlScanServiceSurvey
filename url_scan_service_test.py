@@ -84,7 +84,6 @@ def scanWithSafeBrowsing(api_key_for_safe_browsing, url_to_scan):
 
 
 # main
-total_duration_start = time.monotonic()
 url_list = loadUrlList()
 web_risk_api_key = input("Enter Web Risk API key: ")
 key_count = int((len(url_list) / Constant.Request_Count_Limit_Per_Key)) + 1
@@ -93,10 +92,11 @@ safe_browsing_api_key_list = []
 for i in range(key_count):
     safe_browsing_api_key_list.append(input("Enter Safe Browsing API key {}: ".format(i + 1)))
 
+total_duration_start = time.monotonic()
 web_risk_total_duration = 0
-web_risk_found_threat_count = 0
+web_risk_found_thread_list = []
 safe_browsing_total_duration = 0
-safe_browsing_found_threat_count = 0
+safe_browsing_found_threat_list = []
 api_key = safe_browsing_api_key_list.pop()
 different_result_url_list = []
 for url in url_list:
@@ -112,7 +112,7 @@ for url in url_list:
     web_risk_total_duration = web_risk_total_duration + (after - before)
 
     if web_risk_result is not None:
-        web_risk_found_threat_count += 1
+        web_risk_found_thread_list.append(url)
 
     # scan with safe browsing
     if index != 0 and index % Constant.Request_Count_Limit_Per_Key == 0:
@@ -125,7 +125,7 @@ for url in url_list:
     safe_browsing_total_duration = safe_browsing_total_duration + (after - before)
 
     if safe_browsing_result is not None:
-        safe_browsing_found_threat_count += 1
+        safe_browsing_found_threat_list.append(url)
 
     # Cache url that has different scan result from web risk and safe browsing
     if (web_risk_result is not None and safe_browsing_result is None) \
@@ -138,17 +138,21 @@ for url in url_list:
     time.sleep(Constant.Request_Interval)
 
 # Print result
-print(" ========================================================================= ")
+print("=========================================================================")
 print("Scan total cost {}".format(time.monotonic() - total_duration_start))
 print("Web Risk API ")
-print("    - fount {} threats".format(web_risk_found_threat_count))
+print("    - fount {} threats".format(len(web_risk_found_thread_list)))
 print("    - total duration: {}".format(web_risk_total_duration))
 print("    - average duration: {}".format(web_risk_total_duration / len(url_list)))
+for web_risk_found_threat in web_risk_found_thread_list:
+    print("    - threat: {}".format(web_risk_found_threat))
 
 print("Safe Browsing API ")
-print("    - fount {} threats".format(safe_browsing_found_threat_count))
+print("    - fount {} threats".format(len(safe_browsing_found_threat_list)))
 print("    - total duration: {}".format(safe_browsing_total_duration))
 print("    - average duration: {}".format(safe_browsing_total_duration / len(url_list)))
+for safe_browsing_found_threat in safe_browsing_found_threat_list:
+    print("    - threat: {}".format(safe_browsing_found_threat))
 
 print("Fount {} different results".format(len(different_result_url_list)))
 if len(different_result_url_list) > 0:
