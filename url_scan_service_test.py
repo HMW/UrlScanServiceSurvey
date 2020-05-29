@@ -6,8 +6,9 @@ import json
 class Constant:
     Default_Key = ""
     Url_List_File = "url_list.txt"
-    Request_Interval = 0.5
+    Request_Interval = 0.2
     Request_Count_Limit_Per_Key = 9000
+    TimeOut = 20
 
 
 def loadUrlList():
@@ -18,18 +19,26 @@ def loadUrlList():
 
 
 def scanWithWebRisk(api_key_for_web_risk, url_to_scan):
+    web_risk_resp = None
     headers = {
         "key": api_key_for_web_risk,
         "uri": url_to_scan,
         "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"]
     }
-    resp = requests.get('https://webrisk.googleapis.com/v1/uris:search', headers)
 
-    if resp.status_code != 200:
-        print("Web Risk: {} - {}".format(resp.status_code, resp.reason))
+    try:
+        web_risk_resp = requests.get('https://webrisk.googleapis.com/v1/uris:search', headers, timeout=Constant.TimeOut)
+    except requests.ConnectionError:
+        print("Web Risk: ConnectionError")
+
+    if web_risk_resp is None:
         return None
 
-    url_threat = resp.json().get("threat")
+    if web_risk_resp.status_code != 200:
+        print("Web Risk: {} - {}".format(web_risk_resp.status_code, web_risk_resp.reason))
+        return None
+
+    url_threat = web_risk_resp.json().get("threat")
     if url_threat is None:
         return None
     else:
@@ -38,6 +47,7 @@ def scanWithWebRisk(api_key_for_web_risk, url_to_scan):
 
 
 def scanWithSafeBrowsing(api_key_for_safe_browsing, url_to_scan):
+    safe_browsing_resp = None
     body_raw = '{\
         "client": {\
           "clientId": "Gogolook Co., Ltd.",\
@@ -63,13 +73,20 @@ def scanWithSafeBrowsing(api_key_for_safe_browsing, url_to_scan):
     threat_entries = threat_info['threatEntries']
     threat_entries.append({"url": "{}".format(url_to_scan)})
     params = {"key": api_key_for_safe_browsing}
-    resp = requests.post('https://safebrowsing.googleapis.com/v4/threatMatches:find', params=params, json=body_json)
 
-    if resp.status_code != 200:
-        print("Safe Browsing: {} - {}".format(resp.status_code, resp.reason))
+    try:
+        safe_browsing_resp = requests.post('https://safebrowsing.googleapis.com/v4/threatMatches:find', params=params, json=body_json, timeout=Constant.TimeOut)
+    except requests.ConnectionError:
+        print("Safe Browsing: ConnectionError")
+
+    if safe_browsing_resp is None:
         return None
 
-    url_threat_list = resp.json().get("matches")
+    if safe_browsing_resp.status_code != 200:
+        print("Safe Browsing: {} - {}".format(safe_browsing_resp.status_code, safe_browsing_resp.reason))
+        return None
+
+    url_threat_list = safe_browsing_resp.json().get("matches")
     threat_types = []
 
     if url_threat_list is not None and len(url_threat_list) > 0:
